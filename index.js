@@ -17,7 +17,7 @@ const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology:
 async function run() {
     try {
         await client.connect();
-        const serviceCollection = client.db('geniusMyTest').collection('Item');
+        const serviceCollection = client.db('laptopStore').collection('Item');
         app.get('/item', async (req, res) => {
             const query = {};
             const cursor = serviceCollection.find(query);
@@ -29,6 +29,13 @@ async function run() {
             const query = { _id: ObjectId(id) };
             const item = await serviceCollection.findOne(query);
             res.send(item);
+        });
+
+        app.delete('/item/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: ObjectId(id) };
+            const result = await serviceCollection.deleteOne(query);
+            res.send(result);
         });
 
     }
