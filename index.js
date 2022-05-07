@@ -31,6 +31,12 @@ async function run() {
             res.send(item);
         });
 
+        app.post('/item', async (req, res) => {
+            const newItem = req.body;
+            const result = await serviceCollection.insertOne(newItem);
+            res.send(result);
+        });
+
         app.delete('/item/:id', async (req, res) => {
             const id = req.params.id;
             const query = { _id: ObjectId(id) };
