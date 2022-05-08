@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
+var jwt = require('jsonwebtoken');
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const app = express();
 const port = process.env.PORT || 5000;
@@ -18,8 +19,14 @@ async function run() {
     try {
         await client.connect();
         const serviceCollection = client.db('laptopStore').collection('Item');
+
         app.get('/item', async (req, res) => {
-            const query = {};
+            // const query = {};
+            let query = {};
+            if (req.query.addedBy) {
+                const addedBy = req.query.addedBy;
+                query = { addedBy };
+            }
             const cursor = serviceCollection.find(query);
             const services = await cursor.toArray();
             res.send(services);
@@ -33,8 +40,22 @@ async function run() {
 
         app.post('/item', async (req, res) => {
             const newItem = req.body;
-            const result = await serviceCollection.insertOne(newItem);
-            res.send(result);
+
+            const tokenInfo = req.headers.authorization;
+            const [email, accessToken] = tokenInfo.split(" ")
+            // console.log(email, accessToken)
+            const decoded = verifyToken(accessToken)
+
+            if (email === decoded.email) {
+                const result = await serviceCollection.insertOne(newItem);
+                res.send({ success: 'Item Added Successfully' })
+            }
+            else {
+                res.send({ success: 'UnAuthoraized Access' })
+            }
+
+
+            // res.send(result);
         });
 
         app.delete('/item/:id', async (req, res) => {
@@ -57,8 +78,14 @@ async function run() {
             const result = await serviceCollection.updateOne(filter, updateDoc, options);
             res.send(result);
 
-        })
+        });
 
+        //Auth
+        app.post('/login', async (req, res) => {
+            const email = req.body;
+            const token = jwt.sign(email, process.env.ACCESS_TOKEN_SECRET);
+            res.send({ token });
+        })
     }
     finally {
 
@@ -73,4 +100,18 @@ app.get('/', (req, res) => {
 
 app.listen(port, () => {
     console.log('listening to port', port);
-})
+});
+
+function verifyToken(token) {
+    let email;
+    jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, function (err, decoded) {
+        if (err) {
+            email = 'Invalid email'
+        }
+        if (decoded) {
+            // console.log(decoded)
+            email = decoded
+        }
+    });
+    return email;
+}
